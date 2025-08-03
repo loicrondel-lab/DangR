@@ -1,0 +1,131 @@
+<ion-content [fullscreen]="true" class="welcome-content">
+  <!-- Barre de progression -->
+  <div class="progress-container">
+    <ion-progress-bar [value]="getProgressValue()" color="primary"></ion-progress-bar>
+    <div class="progress-text">
+      {{ currentSlide + 1 }} / {{ slides.length }}
+    </div>
+  </div>
+
+  <!-- Slides d'onboarding -->
+  <ion-slides 
+    #slides 
+    [options]="{ 
+      initialSlide: 0, 
+      speed: 400,
+      spaceBetween: 20,
+      centeredSlides: true
+    }"
+    (ionSlideDidChange)="onSlideChange($event)">
+    
+    <ion-slide *ngFor="let slide of slides; let i = index" class="slide-container">
+      <div class="slide-content">
+        <!-- Icône -->
+        <div class="slide-icon" [ngClass]="'icon-' + slide.color">
+          <ion-icon [name]="slide.icon" size="large"></ion-icon>
+        </div>
+
+        <!-- Contenu -->
+        <div class="slide-text">
+          <h1>{{ slide.title }}</h1>
+          <h2>{{ slide.subtitle }}</h2>
+          <p>{{ slide.description }}</p>
+        </div>
+
+        <!-- Permissions (dernier slide) -->
+        <div *ngIf="i === slides.length - 1" class="permissions-section">
+          <div class="permission-item">
+            <ion-button 
+              fill="outline" 
+              [color]="isLocationPermissionGranted ? 'success' : 'primary'"
+              (click)="requestLocationPermission()"
+              [disabled]="isLocationPermissionGranted">
+              <ion-icon 
+                [name]="isLocationPermissionGranted ? 'checkmark-circle-outline' : 'location-outline'" 
+                slot="start">
+              </ion-icon>
+              {{ isLocationPermissionGranted ? 'Position autorisée' : 'Autoriser la géolocalisation' }}
+            </ion-button>
+          </div>
+
+          <div class="permission-item">
+            <ion-button 
+              fill="outline" 
+              [color]="isNotificationPermissionGranted ? 'success' : 'primary'"
+              (click)="requestNotificationPermission()"
+              [disabled]="isNotificationPermissionGranted">
+              <ion-icon 
+                [name]="isNotificationPermissionGranted ? 'checkmark-circle-outline' : 'notifications-outline'" 
+                slot="start">
+              </ion-icon>
+              {{ isNotificationPermissionGranted ? 'Notifications autorisées' : 'Autoriser les notifications' }}
+            </ion-button>
+          </div>
+
+          <ion-item lines="none" class="terms-item">
+            <ion-checkbox 
+              slot="start" 
+              [(ngModel)]="acceptTerms"
+              color="primary">
+            </ion-checkbox>
+            <ion-label class="ion-text-wrap">
+              J'accepte les conditions d'utilisation et la politique de confidentialité
+            </ion-label>
+          </ion-item>
+        </div>
+      </div>
+    </ion-slide>
+  </ion-slides>
+
+  <!-- Navigation -->
+  <div class="navigation-container">
+    <!-- Indicateurs de slides -->
+    <div class="slide-indicators">
+      <div 
+        *ngFor="let slide of slides; let i = index"
+        class="indicator"
+        [ngClass]="{ 'active': i === currentSlide }">
+      </div>
+    </div>
+
+    <!-- Boutons de navigation -->
+    <div class="navigation-buttons">
+      <ion-button 
+        fill="clear" 
+        color="medium"
+        (click)="skipOnboarding()"
+        *ngIf="!isLastSlide">
+        Passer
+      </ion-button>
+
+      <div class="nav-buttons-right">
+        <ion-button 
+          fill="clear" 
+          color="primary"
+          (click)="previousSlide()"
+          *ngIf="currentSlide > 0">
+          <ion-icon name="chevron-back-outline"></ion-icon>
+        </ion-button>
+
+        <ion-button 
+          *ngIf="!isLastSlide"
+          fill="solid" 
+          color="primary"
+          (click)="nextSlide()">
+          Suivant
+          <ion-icon name="arrow-forward-outline" slot="end"></ion-icon>
+        </ion-button>
+
+        <ion-button 
+          *ngIf="isLastSlide"
+          fill="solid" 
+          color="success"
+          [disabled]="!canFinishOnboarding()"
+          (click)="finishOnboarding()">
+          Commencer
+          <ion-icon name="checkmark-circle-outline" slot="end"></ion-icon>
+        </ion-button>
+      </div>
+    </div>
+  </div>
+</ion-content>
