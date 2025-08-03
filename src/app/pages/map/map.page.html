@@ -1,0 +1,93 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>Carte des dangers</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <ion-header collapse="condense">
+    <ion-toolbar>
+      <ion-title size="large">Carte des dangers</ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <!-- Conteneur de la carte -->
+  <div class="map-container">
+    <div #mapContainer class="map"></div>
+    
+    <!-- Boutons flottants -->
+    <ion-fab vertical="bottom" horizontal="end" slot="fixed">
+      <ion-fab-button (click)="refreshLocation()">
+        <ion-icon name="refresh-outline"></ion-icon>
+      </ion-fab-button>
+    </ion-fab>
+    
+    <ion-fab vertical="bottom" horizontal="start" slot="fixed">
+      <ion-fab-button (click)="centerOnUser()">
+        <ion-icon name="locate-outline"></ion-icon>
+      </ion-fab-button>
+    </ion-fab>
+  </div>
+
+  <!-- Détails du danger sélectionné -->
+  <div class="danger-details" *ngIf="selectedDanger">
+    <ion-card>
+      <ion-card-content>
+        <div class="danger-header">
+          <div class="danger-info">
+            <h2>{{ dangerTypeLabels[selectedDanger.type] }}</h2>
+            <ion-chip 
+              [color]="selectedDanger.severity === 'critical' ? 'danger' : 
+                       selectedDanger.severity === 'high' ? 'warning' :
+                       selectedDanger.severity === 'medium' ? 'primary' : 'success'">
+              {{ selectedDanger.severity.toUpperCase() }}
+            </ion-chip>
+          </div>
+          <ion-badge color="primary">
+            {{ selectedDanger.reportCount }} signalement(s)
+          </ion-badge>
+        </div>
+
+        <div class="danger-meta">
+          <p><strong>Distance:</strong> {{ getDistanceFromUser(selectedDanger) }}</p>
+          <p><strong>Signalé:</strong> {{ getTimeAgo(selectedDanger.reportedAt) }}</p>
+          <p *ngIf="selectedDanger.description">
+            <strong>Description:</strong> {{ selectedDanger.description }}
+          </p>
+        </div>
+
+        <div class="danger-actions">
+          <ion-button 
+            fill="outline" 
+            color="success"
+            (click)="confirmDanger(selectedDanger!)">
+            <ion-icon name="checkmark-circle-outline" slot="start"></ion-icon>
+            Confirmer
+          </ion-button>
+          
+          <ion-button 
+            fill="outline" 
+            color="medium"
+            (click)="dismissDanger(selectedDanger!)">
+            <ion-icon name="close-circle-outline" slot="start"></ion-icon>
+            Signaler comme résolu
+          </ion-button>
+        </div>
+      </ion-card-content>
+    </ion-card>
+  </div>
+
+  <!-- Statistiques rapides -->
+  <div class="stats-container" *ngIf="dangers.length > 0 && !selectedDanger">
+    <ion-card>
+      <ion-card-content>
+        <div class="stats">
+          <div class="stat-item">
+            <ion-icon name="alert-circle-outline" color="primary"></ion-icon>
+            <span>{{ dangers.length }} danger(s) actif(s)</span>
+          </div>
+        </div>
+      </ion-card-content>
+    </ion-card>
+  </div>
+</ion-content>

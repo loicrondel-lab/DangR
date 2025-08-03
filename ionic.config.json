@@ -1,0 +1,7 @@
+{
+  "name": "danger-alert",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular"
+}

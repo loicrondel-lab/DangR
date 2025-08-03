@@ -1,0 +1,121 @@
+<ion-header [translucent]="true">
+  <ion-toolbar>
+    <ion-title>Signaler un danger</ion-title>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <ion-header collapse="condense">
+    <ion-toolbar>
+      <ion-title size="large">Signaler un danger</ion-title>
+    </ion-toolbar>
+  </ion-header>
+
+  <div class="container">
+    <ion-card>
+      <ion-card-header>
+        <ion-card-title>
+          <ion-icon name="alert-circle-outline"></ion-icon>
+          Nouveau signalement
+        </ion-card-title>
+      </ion-card-header>
+      
+      <ion-card-content>
+        <form>
+          <!-- Type de danger -->
+          <ion-item>
+            <ion-label position="stacked">Type de danger *</ion-label>
+            <ion-select 
+              [(ngModel)]="report.type" 
+              name="type"
+              placeholder="Sélectionnez le type"
+              interface="popover">
+              <ion-select-option 
+                *ngFor="let type of dangerTypes" 
+                [value]="type">
+                {{ dangerTypeLabels[type] }}
+              </ion-select-option>
+            </ion-select>
+          </ion-item>
+
+          <!-- Niveau de sévérité -->
+          <ion-item>
+            <ion-label position="stacked">Niveau de sévérité *</ion-label>
+            <ion-select 
+              [(ngModel)]="report.severity" 
+              name="severity"
+              placeholder="Sélectionnez la sévérité"
+              interface="popover">
+              <ion-select-option 
+                *ngFor="let severity of dangerSeverities" 
+                [value]="severity">
+                {{ severityLabels[severity] }}
+              </ion-select-option>
+            </ion-select>
+          </ion-item>
+
+          <!-- Rayon d'alerte -->
+          <ion-item>
+            <ion-label position="stacked">
+              Rayon d'alerte: {{ getRadiusLabel(report.radius || 1000) }}
+            </ion-label>
+            <ion-range
+              [(ngModel)]="report.radius"
+              name="radius"
+              min="500"
+              max="5000"
+              step="250"
+              pin="true"
+              color="primary">
+            </ion-range>
+            <ion-note slot="helper">
+              Distance à laquelle les autres utilisateurs seront alertés
+            </ion-note>
+          </ion-item>
+
+          <!-- Description -->
+          <ion-item>
+            <ion-label position="stacked">Description (optionnel)</ion-label>
+            <ion-textarea
+              [(ngModel)]="report.description"
+              name="description"
+              placeholder="Décrivez le danger en détail..."
+              rows="4"
+              maxlength="200">
+            </ion-textarea>
+          </ion-item>
+
+          <!-- Informations sur la localisation -->
+          <ion-item lines="none">
+            <ion-icon name="location-outline" slot="start" color="primary"></ion-icon>
+            <ion-label>
+              <h3>Localisation</h3>
+              <p>Votre position GPS sera utilisée pour le signalement</p>
+            </ion-label>
+          </ion-item>
+        </form>
+      </ion-card-content>
+    </ion-card>
+
+    <!-- Bouton de signalement -->
+    <div class="button-container">
+      <ion-button 
+        expand="block" 
+        size="large"
+        (click)="showConfirmDialog()"
+        [disabled]="!isFormValid() || isLoading">
+        <ion-icon 
+          *ngIf="!isLoading" 
+          name="checkmark-circle-outline" 
+          slot="start">
+        </ion-icon>
+        <ion-spinner 
+          *ngIf="isLoading" 
+          name="crescent" 
+          slot="start">
+        </ion-spinner>
+        {{ isLoading ? 'Signalement en cours...' : 'Signaler le danger' }}
+      </ion-button>
+    </div>
+  </div>
+</ion-content>

@@ -1,0 +1,79 @@
+.container {
+  padding: 16px;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+ion-card {
+  margin-bottom: 20px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+ion-card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ion-color-primary);
+}
+
+ion-item {
+  --padding-start: 0;
+  --inner-padding-end: 0;
+  margin-bottom: 16px;
+}
+
+ion-label[position="stacked"] {
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--ion-color-medium);
+}
+
+ion-select,
+ion-textarea {
+  --padding-start: 12px;
+  --padding-end: 12px;
+  --border-radius: 8px;
+  --background: var(--ion-color-light);
+}
+
+ion-range {
+  --bar-background: var(--ion-color-light);
+  --bar-background-active: var(--ion-color-primary);
+  --knob-background: var(--ion-color-primary);
+  --pin-background: var(--ion-color-primary);
+  --pin-color: white;
+}
+
+.button-container {
+  padding: 20px 0;
+}
+
+ion-button {
+  --border-radius: 12px;
+  height: 56px;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+ion-note {
+  font-size: 12px;
+  color: var(--ion-color-medium);
+  margin-top: 4px;
+}
+
+// Couleurs pour les niveaux de sévérité
+ion-select[ng-reflect-model="critical"] {
+  --color: var(--ion-color-danger);
+}
+
+ion-select[ng-reflect-model="high"] {
+  --color: var(--ion-color-warning);
+}
+
+ion-select[ng-reflect-model="medium"] {
+  --color: var(--ion-color-primary);
+}
+
+ion-select[ng-reflect-model="low"] {
+  --color: var(--ion-color-success);
+}
