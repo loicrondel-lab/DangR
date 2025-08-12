@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_theme.dart';
 import '../../../../core/providers/providers.dart';
+import '../../../../core/widgets/language_selector.dart';
+import '../../../../core/l10n/app_localizations.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -39,6 +41,34 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
   void dispose() {
     _fadeController.dispose();
     super.dispose();
+  }
+
+  String _getCurrentLanguageName(BuildContext context) {
+    final locale = AppLocalizations.of(context).locale;
+    switch (locale.languageCode) {
+      case 'en':
+        return AppLocalizations.of(context).languageEnglish;
+      case 'fr':
+        return AppLocalizations.of(context).languageFrench;
+      case 'es':
+        return AppLocalizations.of(context).languageSpanish;
+      case 'de':
+        return AppLocalizations.of(context).languageGerman;
+      case 'it':
+        return AppLocalizations.of(context).languageItalian;
+      case 'pt':
+        return AppLocalizations.of(context).languagePortuguese;
+      case 'ja':
+        return AppLocalizations.of(context).languageJapanese;
+      case 'ko':
+        return AppLocalizations.of(context).languageKorean;
+      case 'zh':
+        return AppLocalizations.of(context).languageChinese;
+      case 'ar':
+        return AppLocalizations.of(context).languageArabic;
+      default:
+        return AppLocalizations.of(context).languageEnglish;
+    }
   }
 
   Future<void> _signOut() async {
@@ -87,9 +117,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
               pinned: true,
               backgroundColor: AppTheme.primaryOrange,
               flexibleSpace: FlexibleSpaceBar(
-                title: const Text(
-                  'Profil',
-                  style: TextStyle(
+                title: Text(
+                  AppLocalizations.of(context).profileTitle,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
@@ -302,6 +332,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage>
                       subtitle: 'Nom, photo, préférences',
                       onTap: () {
                         // Ouvrir l'édition du profil
+                      },
+                    ),
+                    _SettingsItem(
+                      icon: Icons.language,
+                      title: AppLocalizations.of(context).profileLanguage,
+                      subtitle: _getCurrentLanguageName(context),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LanguageSelector(),
+                          ),
+                        );
                       },
                     ),
                     _SettingsItem(

@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../router/app_router.dart';
 import '../services/notification_service.dart';
 import '../services/location_service.dart';
 import '../services/auth_service.dart';
 import '../services/hazard_service.dart';
-import '../models/hazard.dart';
+import '../models/hazard.dart'; // Les modèles de données sont maintenant définis dans ../models/hazard.dart
 
 part 'providers.g.dart';
 
-// Theme provider
+// Theme Mode Provider
 @riverpod
 class ThemeMode extends _$ThemeMode {
   @override
@@ -25,183 +27,193 @@ class ThemeMode extends _$ThemeMode {
   }
 }
 
-// Auth provider
+// Locale Provider
+@riverpod
+class LocaleNotifier extends _$LocaleNotifier {
+  @override
+  Locale build() {
+    return const Locale('en', 'US'); // Default to English
+  }
+
+  Future<void> setLocale(Locale locale) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('locale', '${locale.languageCode}_${locale.countryCode}');
+    state = locale;
+  }
+
+  Future<void> loadSavedLocale() async {
+    final prefs = await SharedPreferences.getInstance();
+    final localeString = prefs.getString('locale');
+    if (localeString != null) {
+      final parts = localeString.split('_');
+      if (parts.length == 2) {
+        state = Locale(parts[0], parts[1]);
+      }
+    }
+  }
+}
+
+// Provider for accessing locale
+@riverpod
+Locale locale(LocaleRef ref) {
+  return ref.watch(localeNotifierProvider);
+}
+
+// Auth Provider
 @riverpod
 class AuthNotifier extends _$AuthNotifier {
   @override
-  Future<bool> build() async {
-    return ref.read(authServiceProvider.notifier).isAuthenticated();
+  FutureOr<void> build() {
+    return ref.read(authServiceProvider.notifier).initialize();
   }
 
-  Future<void> signInAnonymously() async {
-    state = const AsyncValue.loading();
-    try {
-      final success = await ref.read(authServiceProvider.notifier).signInAnonymously();
-      state = AsyncValue.data(success);
-    } catch (error, stackTrace) {
-      state = AsyncValue.error(error, stackTrace);
-    }
+  Future<bool> signInAnonymously() async {
+    return await ref.read(authServiceProvider.notifier).signInAnonymously();
+  }
+
+  Future<bool> signInWithEmail(String email, String password) async {
+    return await ref.read(authServiceProvider.notifier).signInWithEmail(email, password);
+  }
+
+  Future<bool> signUpWithEmail(String email, String password) async {
+    return await ref.read(authServiceProvider.notifier).signUpWithEmail(email, password);
   }
 
   Future<void> signOut() async {
-    state = const AsyncValue.loading();
-    try {
-      await ref.read(authServiceProvider.notifier).signOut();
-      state = const AsyncValue.data(false);
-    } catch (error, stackTrace) {
-      state = AsyncValue.error(error, stackTrace);
-    }
+    await ref.read(authServiceProvider.notifier).signOut();
   }
+
+  bool get isAuthenticated => ref.read(authServiceProvider.notifier).isAuthenticated;
+  String? get currentUserId => ref.read(authServiceProvider.notifier).currentUserId;
 }
 
-// Location provider
+// Location Provider
 @riverpod
 class LocationNotifier extends _$LocationNotifier {
   @override
-  Future<Position?> build() async {
-    return ref.read(locationServiceProvider.notifier).getCurrentLocation();
+  FutureOr<void> build() {
+    return ref.read(locationServiceProvider.notifier).initialize();
   }
 
-  Future<void> startLocationTracking() async {
-    await ref.read(locationServiceProvider.notifier).startTracking();
+  Future<Position?> getCurrentPosition() async {
+    return await ref.read(locationServiceProvider.notifier).getCurrentPosition();
   }
 
-  Future<void> stopLocationTracking() async {
-    await ref.read(locationServiceProvider.notifier).stopTracking();
+  Future<void> startBackgroundTracking() async {
+    await ref.read(locationServiceProvider.notifier).startBackgroundLocationTracking();
+  }
+
+  Future<void> stopBackgroundTracking() async {
+    await ref.read(locationServiceProvider.notifier).stopBackgroundLocationTracking();
   }
 }
 
-// Hazards provider
+// Hazards Provider
 @riverpod
 class HazardsNotifier extends _$HazardsNotifier {
   @override
   Future<List<Hazard>> build() async {
-    return ref.read(hazardServiceProvider.notifier).getNearbyHazards();
+    return [];
   }
 
-  Future<void> createHazard(Hazard hazard) async {
-    state = const AsyncValue.loading();
-    try {
-      await ref.read(hazardServiceProvider.notifier).createHazard(hazard);
-      ref.invalidateSelf();
-    } catch (error, stackTrace) {
-      state = AsyncValue.error(error, stackTrace);
+  Future<void> loadHazardsInArea(double latitude, double longitude, double radius) async {
+    final hazards = await ref.read(hazardServiceProvider.notifier).getHazardsInArea(
+      latitude: latitude,
+      longitude: longitude,
+      radius: radius,
+    );
+    state = AsyncValue.data(hazards);
+  }
+
+  Future<void> createHazard({
+    required HazardType type,
+    required double latitude,
+    required double longitude,
+    required int severity,
+    String? description,
+    List<String>? photoUrls,
+  }) async {
+    final hazard = await ref.read(hazardServiceProvider.notifier).createHazard(
+      type: type,
+      latitude: latitude,
+      longitude: longitude,
+      severity: severity,
+      description: description,
+      photoUrls: photoUrls,
+    );
+    if (hazard != null) {
+      final currentHazards = state.value ?? [];
+      state = AsyncValue.data([hazard, ...currentHazards]);
     }
   }
 
-  Future<void> voteHazard(String hazardId, int vote) async {
-    try {
-      await ref.read(hazardServiceProvider.notifier).voteHazard(hazardId, vote);
-      ref.invalidateSelf();
-    } catch (error, stackTrace) {
-      state = AsyncValue.error(error, stackTrace);
-    }
-  }
-
-  Future<void> refreshHazards() async {
-    ref.invalidateSelf();
+  Future<void> voteHazard(String hazardId, bool isUpvote) async {
+    await ref.read(hazardServiceProvider.notifier).voteHazard(
+      hazardId: hazardId,
+      isUpvote: isUpvote,
+    );
+    // Refresh hazards after voting
+    await loadHazardsInArea(0, 0, 10000); // This should be updated with actual coordinates
   }
 }
 
-// Notification settings provider
+// Notification Settings Provider
 @riverpod
 class NotificationSettings extends _$NotificationSettings {
   @override
-  Future<NotificationSettings> build() async {
-    return ref.read(notificationServiceProvider.notifier).getSettings();
+  NotificationSettings build() {
+    return const NotificationSettings(
+      pushEnabled: true,
+      emailEnabled: false,
+      hazardRadius: 1000,
+      emergencyAlerts: true,
+      dailyDigest: false,
+    );
   }
 
-  Future<void> updateSettings(NotificationSettings settings) async {
-    state = const AsyncValue.loading();
-    try {
-      await ref.read(notificationServiceProvider.notifier).updateSettings(settings);
-      ref.invalidateSelf();
-    } catch (error, stackTrace) {
-      state = AsyncValue.error(error, stackTrace);
-    }
+  void updateSettings(NotificationSettings settings) {
+    state = settings;
+  }
+
+  void togglePushNotifications() {
+    state = state.copyWith(pushEnabled: !state.pushEnabled);
+  }
+
+  void toggleEmailNotifications() {
+    state = state.copyWith(emailEnabled: !state.emailEnabled);
+  }
+
+  void updateHazardRadius(double radius) {
+    state = state.copyWith(hazardRadius: radius);
   }
 }
 
-// App state provider
+// App State Provider
 @riverpod
 class AppState extends _$AppState {
   @override
-  AppStateData build() => const AppStateData();
-
-  void setCurrentLocation(Position position) {
-    state = state.copyWith(currentLocation: position);
+  Map<String, dynamic> build() {
+    return {
+      'isLoading': false,
+      'currentPage': 'map',
+      'showOnboarding': true,
+      'lastSync': null,
+    };
   }
 
-  void setSelectedHazard(Hazard? hazard) {
-    state = state.copyWith(selectedHazard: hazard);
+  void setLoading(bool loading) {
+    state = {...state, 'isLoading': loading};
   }
 
-  void setMapStyle(MapStyle style) {
-    state = state.copyWith(mapStyle: style);
+  void setCurrentPage(String page) {
+    state = {...state, 'currentPage': page};
   }
 
-  void setFilters(HazardFilters filters) {
-    state = state.copyWith(filters: filters);
+  void setShowOnboarding(bool show) {
+    state = {...state, 'showOnboarding': show};
   }
-}
 
-// Data classes
-class AppStateData {
-  final Position? currentLocation;
-  final Hazard? selectedHazard;
-  final MapStyle mapStyle;
-  final HazardFilters filters;
-
-  const AppStateData({
-    this.currentLocation,
-    this.selectedHazard,
-    this.mapStyle = MapStyle.streets,
-    this.filters = const HazardFilters(),
-  });
-
-  AppStateData copyWith({
-    Position? currentLocation,
-    Hazard? selectedHazard,
-    MapStyle? mapStyle,
-    HazardFilters? filters,
-  }) {
-    return AppStateData(
-      currentLocation: currentLocation ?? this.currentLocation,
-      selectedHazard: selectedHazard ?? this.selectedHazard,
-      mapStyle: mapStyle ?? this.mapStyle,
-      filters: filters ?? this.filters,
-    );
+  void setLastSync(DateTime? sync) {
+    state = {...state, 'lastSync': sync};
   }
 }
-
-enum MapStyle { streets, satellite, dark }
-
-class HazardFilters {
-  final List<HazardType> types;
-  final int? maxAgeHours;
-  final double? maxDistanceKm;
-  final int? minSeverity;
-
-  const HazardFilters({
-    this.types = const [],
-    this.maxAgeHours,
-    this.maxDistanceKm,
-    this.minSeverity,
-  });
-
-  HazardFilters copyWith({
-    List<HazardType>? types,
-    int? maxAgeHours,
-    double? maxDistanceKm,
-    int? minSeverity,
-  }) {
-    return HazardFilters(
-      types: types ?? this.types,
-      maxAgeHours: maxAgeHours ?? this.maxAgeHours,
-      maxDistanceKm: maxDistanceKm ?? this.maxDistanceKm,
-      minSeverity: minSeverity ?? this.minSeverity,
-    );
-  }
-}
-
-// Les modèles de données sont maintenant définis dans ../models/hazard.dart
