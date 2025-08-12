@@ -1,0 +1,30 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "baseUrl": ".",
+    "rootDir": ".",
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "target": "es2022",
+    "lib": ["es2022", "dom"],
+    "types": [],
+    "useDefineForClassFields": false,
+    "skipLibCheck": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": false,
+    "noImplicitAny": false,
+    "strictNullChecks": true,
+    "strictBindCallApply": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "declaration": false,
+    "sourceMap": true,
+    "paths": {
+      "@dangr/api": ["libs/api/src/index.ts"],
+      "@dangr/auth": ["libs/auth/src/index.ts"],
+      "@dangr/data": ["libs/src/index.ts"],
+      "@dangr/map": ["libs/map/src/index.ts"],
+      "ui": ["libs/ui/src/index.ts"]
+    }
+  }
+}
