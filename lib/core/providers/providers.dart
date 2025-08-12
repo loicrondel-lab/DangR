@@ -6,6 +6,7 @@ import '../services/notification_service.dart';
 import '../services/location_service.dart';
 import '../services/auth_service.dart';
 import '../services/hazard_service.dart';
+import '../models/hazard.dart';
 
 part 'providers.g.dart';
 
@@ -203,100 +204,4 @@ class HazardFilters {
   }
 }
 
-// Placeholder classes (to be defined in separate files)
-class Position {
-  final double latitude;
-  final double longitude;
-  final double? accuracy;
-  final DateTime timestamp;
-
-  const Position({
-    required this.latitude,
-    required this.longitude,
-    this.accuracy,
-    required this.timestamp,
-  });
-}
-
-class Hazard {
-  final String id;
-  final HazardType type;
-  final int severity;
-  final Position position;
-  final double radiusM;
-  final HazardStatus status;
-  final DateTime createdAt;
-  final DateTime? expiresAt;
-  final String reporterId;
-  final List<String> mediaUrls;
-  final int upvotes;
-  final int downvotes;
-
-  const Hazard({
-    required this.id,
-    required this.type,
-    required this.severity,
-    required this.position,
-    required this.radiusM,
-    required this.status,
-    required this.createdAt,
-    this.expiresAt,
-    required this.reporterId,
-    this.mediaUrls = const [],
-    this.upvotes = 0,
-    this.downvotes = 0,
-  });
-}
-
-enum HazardType {
-  verbalAggression,
-  aggressiveGroup,
-  intoxication,
-  harassment,
-  theft,
-  suspiciousActivity,
-  other,
-}
-
-enum HazardStatus {
-  pending,
-  confirmed,
-  disputed,
-  expired,
-}
-
-class NotificationSettings {
-  final bool proximityAlerts;
-  final bool hazardUpdates;
-  final bool serviceInfo;
-  final double proximityRadiusKm;
-  final bool soundEnabled;
-  final bool vibrationEnabled;
-
-  const NotificationSettings({
-    this.proximityAlerts = true,
-    this.hazardUpdates = true,
-    this.serviceInfo = true,
-    this.proximityRadiusKm = 0.5,
-    this.soundEnabled = true,
-    this.vibrationEnabled = true,
-  });
-
-  NotificationSettings copyWith({
-    bool? proximityAlerts,
-    bool? hazardUpdates,
-    bool? serviceInfo,
-    double? proximityRadiusKm,
-    bool? soundEnabled,
-    bool? vibrationEnabled,
-  }) {
-    return NotificationSettings(
-      proximityAlerts: proximityAlerts ?? this.proximityAlerts,
-      hazardUpdates: hazardUpdates ?? this.hazardUpdates,
-      serviceInfo: serviceInfo ?? this.serviceInfo,
-      proximityRadiusKm: proximityRadiusKm ?? this.proximityRadiusKm,
-      soundEnabled: soundEnabled ?? this.soundEnabled,
-      vibrationEnabled: vibrationEnabled ?? this.vibrationEnabled,
-    );
-  }
-}
+// Les modèles de données sont maintenant définis dans ../models/hazard.dart
