@@ -1,0 +1,199 @@
+# DangR — Spécifications techniques (migration Flutter)
+
+> Cible : grandes villes françaises • App grand public iOS/Android • Dashboard modération ultérieur Web/Desktop.
+> Contexte : migration du MVP initial prévu en Ionic/Angular vers **Flutter**.
+
+---
+
+## 1) Objectifs & KPIs
+
+* **Temps de mise en prod MVP** : ≤ 6 semaines.
+* **Perf carte** : ≥ 50 FPS sur écran carte avec 3 000 points visibles.
+* **Batterie** : < 6%/h en navigation carte + géoloc BG.
+* **Crash-free** : > 99.5% sessions.
+* **Latence événement** (report → visibilité locale) : < 3 s en heure de pointe.
+* **RGPD/CNIL** : DPIA validée avant ouverture bêta.
+
+## 2) Plateformes & cibles
+
+* **Mobile** : iOS 15+ (A12+), Android 8.0+.
+* **Desktop (post-MVP)** : Windows/macOS pour la modération.
+* **Web (post-MVP)** : dashboard modération (Flutter Web ou React).
+
+## 3) Architecture applicative
+
+* **Pattern** : Clean Architecture + feature folders.
+* **State management** : **Riverpod** (ou Bloc si préférence équipe), GoRouter pour navigation.
+* **Données locales** : **Isar** (NoSQL embarqué) pour cache/queue offline; alternative **Drift** (SQLite) si besoin SQL.
+* **Réactivité temps réel** : WebSocket (Supabase Realtime / Phoenix), Stream controllers au niveau repo.
+* **Injection** : Riverpod providers + codegen (freezed/json\_serializable) pour modèles immuables.
+
+```
+App (UI) —> Feature (Controllers/ViewModels) —> Domain (UseCases) —> Data (Repos) —> Sources (HTTP/WebSocket/DB)
+```
+
+## 4) Backend & données
+
+* **BaaS recommandé** : **Supabase** (Postgres + **PostGIS**, Auth, Realtime, Storage, RLS).
+* **Schéma initial** (extrait) :
+
+  * `hazards` : id, type, severity, lat, lon (geography), radius\_m, status, created\_at, expires\_at, reporter\_id (hash), media\[]
+  * `votes` : hazard\_id, user\_id\_hash, value (+1/-1), created\_at
+  * `notes` (modération), `users_shadow` (pseudonymisé), `areas` (tiles/quadrants), `audit_log`.
+* **Index** : GIST sur géométrie; BRIN sur created\_at; couvertures pour (status, expires\_at).
+* **Déduplication** : fonction PostGIS ST\_ClusterWithin + heuristique (type, temps < 10 min, distance < 60 m).
+* **TTL** : hazards expirent auto (ex. 12–48 h selon type).
+* **Vector tiles (post-MVP)** : pipeline tippecanoe + tileserver (ou Supabase+Cloudflare) pour heatmaps.
+
+## 5) Cartographie & géospatial
+
+* **SDK** : **maplibre\_gl** (rendu natif) avec style MapLibre (MapTiler/OSM) + couches custom.
+* **Clustering client** : `supercluster_dart` (points → clusters) pour MVP.
+* **Couches** :
+
+  * Points/Clusters: couleur par catégorie/sévérité; densité → chaleur.
+  * Tuiles heatmap (post-MVP) : MBTiles vector.
+* **Gestes** : pinch/rotate/compass; contrôle de scale; mode nuit.
+* **Géocodage** (recherche d’adresse) : BAN/Adresse.data.gouv + fallback Photon/Pelias (via backend proxy).
+
+## 6) Localisation & arrière-plan
+
+* **Lib** :
+
+  * **Production recommandé** : `flutter_background_geolocation` (Transistorsoft, payant) pour tracking/geo-fence fiable.
+  * **Alternative OSS MVP** : `geolocator` + `geofence_service` + `flutter_foreground_task` (Android) + règles d’économie d’énergie.
+* **Stratégie énergie** : distanceFilter adaptatif (urbain), pauses auto, précision « balanced » par défaut.
+* **Geo-fences** : autour des zones à risque (rayon 150–300 m), max \~100 actives par OS.
+* **Consentement** : flux opt-in, précision Approx/Precise (iOS), « Allow Once/While Using/Always ».
+
+## 7) Notifications & temps réel
+
+* **Push** : Firebase Cloud Messaging (FCM) → APNs/iOS & Android.
+* **Canaux** :
+
+  * Alertes de proximité (geo-fence / hazard proche).
+  * Updates d’un signalement suivi (status, consensus).
+  * Info service (pannes, incidents majeurs ville).
+* **In-app** : toasts non intrusifs + inbox locale.
+* **Throttling** : max N alertes / 2 h / utilisateur; regroupement par zone.
+
+## 8) Sécurité, confidentialité, conformité
+
+* **Pseudonymisation** : stocker uniquement un **hash salé** de l’ID appareil; pas de trajectoires persistées.
+* **Chiffrement** : TLS 1.2+; sur appareil (Isar/Drift) chiffré.
+* **Auth** : anonyme + option téléphone/email pour features avancées; RLS Postgres stricte.
+* **Anti-abus** :
+
+  * **Réputation** locale (Wilson score) par utilisateur/zone/catégorie.
+  * **Rate limiting** côté API (IP, device hash), **Play Integrity / DeviceCheck**.
+  * Détection d’anomalies : rafales, duplicats, trajets impossibles.
+* **DPIA/CNIL** : journalisation des accès, registre des traitements, minimisation des données, rétention courte.
+* **Âge** : 16+ par défaut (à confirmer), filtre vocabulaire/catégories sensibles.
+
+## 9) Modération & fiabilité
+
+* **Boucle de confiance** : votes de confirmation/infirmer; seuil pour passer de « non vérifié » → « confirmé ».
+* **Rôles** : user, super-user (fiable), modérateur (bénévole), opérateur (staff).
+* **Triangulation** : consensus spatio-temporel (≥ 3 sources distinctes en 15 min) → boost visibilité.
+* **Contenu** : photos optionnelles, floutage visages/plaques côté client avant upload; filtrage auto (NSFW, violence) côté serveur.
+
+## 10) Expérience & UX clés
+
+* **Onboarding** : explication claire de l’usage des données de localisation; réglages finesse & batterie.
+* **Carte d’accueil** : focus ville actuelle; « itinéraire à éviter » (post-MVP) via alternative pathing.
+* **Signalement en 2 taps** : Catégorie → Envoyer (auto-GPS, option photo/voix). Durée restante visible.
+* **Mode discret** : thème sombre, pas de sons; widget rapide « Signaler ».
+* **Accessibilité** : contrastes, tailles dynamiques, VoiceOver/TalkBack.
+
+## 11) Performance & budgets
+
+* **Démarrage à froid** : ≤ 2.5 s (Pixel 6/iPhone 12).
+* **Mémoire** : ≤ 350 Mo à l’écran carte.
+* **Rendu carte** : ≥ 50 FPS (2D), ≥ 40 FPS avec clusters.
+* **Batterie** : < 6%/h (navigation + BG loc). Bench via profils énergétiques Android/iOS.
+
+## 12) Tests
+
+* **Unitaires** : use-cases, repos, utilitaires géo (haversine, clustering).
+* **Widget/Golden tests** : écrans critiques (carte, feuille de signalement, notifications).
+* **Intégration** : scénarios e2e avec location mock & WebSocket mock.
+* **Tests terrain** : parcours en ville (Paris, Lyon, Marseille) avec scripts de mesure batterie/thermals.
+
+## 13) CI/CD & qualité
+
+* **CI** : GitHub Actions (lint, test, build flavors dev/stage/prod).
+* **CD** : Fastlane (signing, screenshots, TestFlight, Play Internal Testing). Option Codemagic pour accélérer iOS.
+* **Mesure** : Sentry (crash), Firebase Analytics/Segment, OpenTelemetry pour traces backend.
+* **Feature flags** : Remote Config (Supabase table + cache local).
+
+## 14) Configuration & environnements
+
+* **Flavors** : dev / staging / prod (bundle id, icônes, endpoints, clés MapLibre/tiles).
+* **Secrets** : .env chiffrés + gestion par store (GitHub OIDC → Cloud Secret Manager).
+* **Observabilité** : dashboards Grafana (APIs), Sentry issues, alerting PagerDuty.
+
+## 15) Packaging & tailles
+
+* **Cibles** : AAB Android, IPA iOS.
+* **Taille visée** : < 25 Mo Android, < 40 Mo iOS (sans cartes offline).
+* **Optimisations** : split-debug-info, tree-shake icons, compress assets, arm64 only iOS.
+
+## 16) Roadmap fonctionnelle (vue Flutter)
+
+* **S1 (MVP)** : carte, création/lecture de signalements, votes, notifications proximité, compte anonyme, modération basique, anti-abus v1.
+* **S2** : filtres avancés, heatmap, photo avec floutage auto, réputation, tableau de bord modération web, intégration mairie/assos locales.
+* **S3** : itinéraires évitant zones, widgets, mode offline (tuiles), carrousel incidents majeurs, campagnes de sensibilisation.
+
+## 17) Impacts vs. plan initial (Ionic → Flutter)
+
+* **+ Perf carte** (rendu natif), **+ BG geoloc** fiable; **+** coût licence Transistorsoft si choisi.
+* **–** Moins de réutilisation web directe (mais dashboard séparé possible).
+* **Dev effort** : migration UI → Flutter (2–3 semaines pour écrans core), intégrations natives spécifiques iOS/Android.
+
+## 18) Risques & mitigations
+
+* **BG geoloc iOS** (suspension en arrière-plan) → utiliser modes `significant-change` + activités; bibliothèque mature.
+* **Abus/hoax** → réputation, seuils de consensus, signalements sanctionnés.
+* **Charge pic** (événement urbain) → backpressure Realtime, réduction densité client, bascule heatmap.
+* **RGPD** → audits externes, DPIA, minimisation agressive, pas de trajets conservés.
+
+## 19) Stack technique détaillée (proposition)
+
+* **Langages** : Dart 3.x; backend SQL (Postgres 15+), PL/pgSQL.
+* **Packages Flutter** (indicatif) :
+
+  * UI : flutter\_hooks/riverpod, go\_router, intl, lottie, shimmer.
+  * Carte : maplibre\_gl, supercluster\_dart.
+  * Localisation : flutter\_background\_geolocation (ou geolocator + geofence\_service + flutter\_foreground\_task).
+  * Stockage : isar, shared\_preferences, file\_picker, image\_picker, image (traitement & floutage).
+  * Réseau : dio, web\_socket\_channel.
+  * Sécurité : device\_info\_plus, package\_info\_plus, flutter\_appauth (si auth avancée), cryptography.
+  * Notifications : firebase\_messaging, flutter\_local\_notifications.
+  * Observabilité : sentry\_flutter.
+* **Backend** : Supabase (Auth, Realtime, Storage S3-compat), PostGIS; Workers Edge (Cloudflare) pour géocodage proxy & rate-limit.
+
+## 20) Permissions (strings & justifications)
+
+* **Location Always/WhenInUse** : affichage d’alertes de proximité et guidage sécurité.
+* **Notifications** : alertes de sécurité.
+* **Camera/Photos** : ajout opção photo au signalement + floutage automatique.
+* **Motion (iOS, optionnel)** : optimisation énergie (détection déplacement vs stationnaire).
+
+## 21) Analytique & métriques produit
+
+* Funnel signalement (ouverture → type → envoi), densité par quartier, temps de validation, taux de faux positifs, rétention D7/D30, NPS.
+
+## 22) Livrables
+
+* **Code Flutter** monorepo (app + packages internes).
+* **Infra** IaC (Terraform) pour BaaS & Workers.
+* **Playbook** modération & anti-abus.
+* **DPIA** + Politique vie privée FR.
+
+---
+
+### Notes d’implémentation rapide
+
+* Commencer par l’écran **Carte + FAB “Signaler”** (prototype en 3 jours), puis pipeline de création (catégorie → envoi → push).
+* Préparer **data seeding** (fixtures Paris/Lyon/Marseille) pour tests perf.
+* Mettre en place **profils d’énergie** (Android Battery Historian, iOS MetricsKit) dès la S1.
